@@ -1,10 +1,10 @@
 extends Node
 ## Dev helper, only active when the game is launched with user arguments:
 ##
-##   godot --path . -- --shots=/abs/dir [--start-x=60] [--secs=6] [--moves=run,jump,fart]
+##   godot --path . -- --shots=/abs/dir [--start-x=60] [--secs=6] [--moves=run,jump,fart] [--every=0.5]
 ##
 ## It starts the game, feeds scripted input and saves a screenshot every
-## half second, then quits. Handy for checking the game without playing it.
+## half second (or every --every seconds), then quits. Handy for checking the game without playing it.
 
 var _dir := ""
 var _secs := 6.0
@@ -13,6 +13,7 @@ var _start_x := NAN
 var _t := 0.0
 var _shot := 0
 var _next_shot := 0.4
+var _every := 0.5
 var _main: Node
 var _drop_on: Node3D
 static var _poked := false
@@ -28,6 +29,8 @@ func _ready() -> void:
 			_start_x = float(a.trim_prefix("--start-x="))
 		elif a.begins_with("--moves="):
 			_moves = a.trim_prefix("--moves=")
+		elif a.begins_with("--every="):
+			_every = maxf(float(a.trim_prefix("--every=")), 0.02)
 	if _dir == "":
 		queue_free()
 		return
@@ -71,8 +74,8 @@ func _process(delta: float) -> void:
 	if _drop_on and is_instance_valid(_drop_on) and _drop_on.alive and _main.player.velocity.y > -8.0 \
 			and _main.player.global_position.y > _drop_on.position.y + 1.5:
 		_main.player.global_position.x = _drop_on.position.x
-	if _t >= _next_shot:
-		_next_shot += 0.5
+	if _t >= _next_shot and _t <= _secs:
+		_next_shot += _every
 		get_viewport().get_texture().get_image().save_png("%s/shot_%02d.png" % [_dir, _shot])
 		_shot += 1
 		var enemies := 0

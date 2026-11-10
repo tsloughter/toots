@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bfbtop74meepm"
-path="res://.godot/imported/marmot.glb-b88db5ff0a0817f4ccbd472ec7f60821.scn"
+uid="uid://bfn5hww8via14"
+path="res://.godot/imported/beaver.glb-bfb468d4f876fc74e917acfe752ae367.scn"
 
 [deps]
 
-source_file="res://models/marmot.glb"
-dest_files=["res://.godot/imported/marmot.glb-b88db5ff0a0817f4ccbd472ec7f60821.scn"]
+source_file="res://models/beaver.glb"
+dest_files=["res://.godot/imported/beaver.glb-bfb468d4f876fc74e917acfe752ae367.scn"]
 
 [params]
 

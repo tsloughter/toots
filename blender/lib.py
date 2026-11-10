@@ -1,7 +1,7 @@
 """Small procedural-modeling toolkit used by the asset scripts in this folder.
 
 Everything is built with bmesh so it runs headless:
-    flatpak run org.blender.Blender -b --python blender/build.py -- hero marmot
+    flatpak run org.blender.Blender -b --python blender/build.py -- hero beaver
 """
 import bpy
 import bmesh
@@ -228,8 +228,13 @@ class Part:
         return out
 
     def tufts(self, samples, materials, rng, length=(0.1, 0.2), radius=(0.03, 0.045),
-              droop=0.6, scale_fn=None, smooth=False):
-        """Shaggy fur: little curved spikes drooping with gravity."""
+              droop=0.6, scale_fn=None, smooth=False, flow=None, lift=1.0, jitter=0.35):
+        """Shaggy fur: little curved spikes drooping with gravity.
+
+        materials is a list to pick from, or a function (point, normal) -> list.
+        flow (point, normal) -> direction makes the fur lie that way instead of
+        hanging straight down; lift < 1 makes it lie flatter against the skin and
+        a smaller jitter makes it tidier."""
         down = Vector((0, 0, -1))
         for p, n in samples:
             k = 1.0 if scale_fn is None else scale_fn(p, n)
@@ -237,10 +242,11 @@ class Part:
                 continue
             L = rng.uniform(*length) * k
             r = rng.uniform(*radius) * (0.6 + 0.4 * k)
-            mi = self._mi(rng.choice(materials))
-            jit = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-1, 1))) * 0.35
-            d1 = (n + down * droop * 0.5 + jit * 0.5).normalized()
-            d2 = (n * 0.45 + down * droop + jit).normalized()
+            mi = self._mi(rng.choice(materials(p, n) if callable(materials) else materials))
+            jit = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-1, 1))) * jitter
+            f = flow(p, n) if flow else down
+            d1 = (n * lift + f * droop * 0.5 + jit * 0.5).normalized()
+            d2 = (n * 0.45 * lift + f * droop + jit).normalized()
             base_m = align(p - n * 0.012, n)
             mid_c = p + d1 * L * 0.5
             mid_m = align(mid_c, d1)
@@ -263,6 +269,19 @@ class Part:
     def transform(self, matrix):
         bmesh.ops.transform(self.bm, matrix=matrix, verts=self.bm.verts)
 
+    def decimate(self, tris):
+        """Thin the mesh so far down to about `tris` triangles.
+
+        For skin that fur will hide. Take the bvh() and sample_surface() the
+        fur and features are placed with first, so they still follow the
+        finer surface, and paint the faces afterwards."""
+        me = bpy.data.meshes.new("_dec")
+        self.bm.to_mesh(me)
+        self.bm.clear()
+        self.bm.from_mesh(_decimated(me, tris))
+        for f in self.bm.faces:
+            f.smooth = True
+
     # -- output ------------------------------------------------------------
     def finish(self, origin=(0, 0, 0), parent=None):
         bmesh.ops.translate(self.bm, verts=self.bm.verts, vec=-Vector(origin))
@@ -281,9 +300,10 @@ class Part:
         return ob
 
 
-def blob(name, build, voxel=0.035, smooth_iter=8, faces=1400):
+def blob(name, build, voxel=0.035, smooth_iter=8, tris=2800):
     """Union the primitives added by build(part) into one smooth blobby mesh
-    (voxel remesh + smooth + decimate) and return it as a new Part."""
+    (voxel remesh + smooth + decimate to about `tris` triangles) and return it
+    as a new Part."""
     src = Part(name + "_src")
     build(src)
     m = mat("_tmp", "#ffffff")
@@ -297,21 +317,27 @@ def blob(name, build, voxel=0.035, smooth_iter=8, faces=1400):
     s.iterations = smooth_iter
     dg = bpy.context.evaluated_depsgraph_get()
     ev = ob.evaluated_get(dg)
-    me = bpy.data.meshes.new_from_object(ev)
-    if faces and len(me.polygons) > faces:
-        tmp_ob = bpy.data.objects.new("_dec", me)
-        bpy.context.scene.collection.objects.link(tmp_ob)
-        d = tmp_ob.modifiers.new("dec", "DECIMATE")
-        d.ratio = faces / len(me.polygons)
-        dg = bpy.context.evaluated_depsgraph_get()
-        me2 = bpy.data.meshes.new_from_object(tmp_ob.evaluated_get(dg))
-        bpy.data.objects.remove(tmp_ob)
-        me = me2
+    me = _decimated(bpy.data.meshes.new_from_object(ev), tris)
     bpy.data.objects.remove(ob)
     out = Part(name)
     out.bm.from_mesh(me)
     for f in out.bm.faces:
         f.smooth = True
+    return out
+
+
+def _decimated(me, tris):
+    """Mesh `me` collapsed to about `tris` triangles, or as it is if it is
+    already that small."""
+    # a remesh gives quads and the decimate works in triangles, so count those
+    have = sum(len(p.vertices) - 2 for p in me.polygons)
+    if not tris or have <= tris:
+        return me
+    ob = bpy.data.objects.new("_dec", me)
+    bpy.context.scene.collection.objects.link(ob)
+    ob.modifiers.new("dec", "DECIMATE").ratio = tris / have
+    out = bpy.data.meshes.new_from_object(ob.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    bpy.data.objects.remove(ob)
     return out
 
 
@@ -326,6 +352,69 @@ def hierarchy(root):
     for c in root.children:
         out.extend(hierarchy(c))
     return out
+
+
+ROUGH_STEPS = (0.1, 0.3, 0.6, 0.9)
+
+
+def _bsdf(material):
+    return next(n for n in material.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+
+
+# The colour attribute has to be called this. Blender 5.2's glTF exporter gives
+# the colours to the first material on a mesh that uses them and then looks the
+# others up by attribute name where it means the glTF name, so under any other
+# name every surface after the first comes out white.
+PAINT = "COLOR_0"
+
+
+def _paint(rough):
+    """The shared material that takes its colour from a mesh's PAINT attribute."""
+    name = "paint_%02d" % round(rough * 100)
+    m = bpy.data.materials.get(name)
+    if m:
+        return m
+    m = mat(name, "#ffffff", rough)
+    col = m.node_tree.nodes.new("ShaderNodeVertexColor")
+    col.layer_name = PAINT
+    m.node_tree.links.new(col.outputs["Color"], _bsdf(m).inputs["Base Color"])
+    return m
+
+
+def vertex_colours(root):
+    """Paint every plain material's colour onto the faces that use it and hand
+    those faces to a shared material instead, one per step of roughness.
+
+    Each material on a mesh is a surface the game draws separately, so a critter
+    with a dozen shades of fur costs a dozen draw calls per part; this way it is
+    one. Glowing and metallic materials are left as they are. Returns root."""
+    for ob in hierarchy(root):
+        if ob.type != "MESH":
+            continue
+        me = ob.data
+        slots, remap, colours = [], [], []
+        for m in me.materials:
+            bsdf = _bsdf(m)
+            keep, col = m, (1.0, 1.0, 1.0, 1.0)
+            if (bsdf.inputs["Emission Strength"].default_value == 0
+                    and bsdf.inputs["Metallic"].default_value == 0):
+                rough = bsdf.inputs["Roughness"].default_value
+                keep = _paint(min(ROUGH_STEPS, key=lambda s: abs(s - rough)))
+                col = tuple(m.diffuse_color)
+            if keep not in slots:
+                slots.append(keep)
+            remap.append(slots.index(keep))
+            colours.append(col)
+        data, index = [], []
+        for p in me.polygons:
+            data.extend(colours[p.material_index] * p.loop_total)
+            index.append(remap[p.material_index])
+        me.color_attributes.new(PAINT, "FLOAT_COLOR", "CORNER").data.foreach_set("color", data)
+        me.materials.clear()             # this also sends every face back to slot 0
+        for m in slots:
+            me.materials.append(m)
+        me.polygons.foreach_set("material_index", index)
+    return root
 
 
 def export(root, name):

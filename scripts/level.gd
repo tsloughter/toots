@@ -34,20 +34,20 @@ const LEDGES := [
 
 ## [kind, x, y, patrol_min, patrol_max]  (eagles: y is flight altitude)
 const ENEMIES := [
-	["marmot", 19, 0.0, 13, 23],
-	["marmot", 34, 0.0, 30, 40],
-	["marmot", 47, 0.0, 43, 51],
-	["marmot", 74, 6.0, 69, 81],
+	["beaver", 19, 0.0, 13, 23],
+	["beaver", 34, 0.0, 30, 40],
+	["beaver", 47, 0.0, 43, 51],
+	["beaver", 74, 6.0, 69, 81],
 	["ram", 106, 6.0, 98, 112],
 	["porcupine", 118, 6.0, 114, 121],
 	["eagle", 138, 10.4, 128, 149],
 	["porcupine", 159, 8.0, 156, 163],
-	["marmot", 170, 8.0, 165, 177],
-	["marmot", 193, 11.0, 189, 197],
+	["beaver", 170, 8.0, 165, 177],
+	["beaver", 193, 11.0, 189, 197],
 	["eagle", 203, 13.6, 197, 209],
 	["ram", 218, 11.0, 212, 224],
 	["porcupine", 229, 11.0, 226, 231],
-	["marmot", 245, 16.0, 240, 251],
+	["beaver", 245, 16.0, 240, 251],
 	["eagle", 259, 19.6, 252, 266],
 	["ram", 276, 18.0, 271, 285],      # starts clear of the checkpoint at 268
 ]

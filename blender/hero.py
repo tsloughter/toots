@@ -32,7 +32,7 @@ def build():
         for sx in (-1, 1):
             p.sphere(fur[0], loc=(sx * 0.37, 0.0, 1.10), scale=(0.17, 0.14, 0.16), segs=20, rings=12)
 
-    body = blob("body", body_shape, voxel=0.03, smooth_iter=10, faces=1800)
+    body = blob("body", body_shape, voxel=0.03, smooth_iter=10, tris=3600)
     body.mats = [fur[0]]
     bvh = body.bvh()
 
@@ -114,7 +114,7 @@ def build():
     def limb(name, loc, scale, origin, count, droop):
         def shape(p):
             p.sphere(fur[0], loc=loc, scale=scale, power=0.85, segs=20, rings=12)
-        part = blob(name, shape, voxel=0.03, smooth_iter=4, faces=260)
+        part = blob(name, shape, voxel=0.03, smooth_iter=4, tris=520)
         part.mats = [fur[0]]
         part.tufts(part.sample_surface(count, rng), fur, rng, length=(0.08, 0.16),
                    radius=(0.028, 0.042), droop=droop)

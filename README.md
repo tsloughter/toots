@@ -4,7 +4,7 @@ A 2.5D side-scroller made with Godot 4 and Blender. Toots is a shaggy black
 monster with magnificent teeth who lives in the Rocky Mountains. He runs, he
 jumps, and when a jump isn't enough he farts his way a little higher.
 
-![Toots fart-flying over a meadow, with a marmot ahead and the snowy Rockies behind](docs/screenshot.png)
+![Toots fart-flying over a meadow, with a beaver ahead and the snowy Rockies behind](docs/screenshot.png)
 
 ## Play
 
@@ -26,7 +26,7 @@ a little gas back too.
 
 Reach the flag on the summit. Huckleberries are optional but delicious.
 
-**The locals:** marmots (stomp them), bighorn rams (they charge; stomp them),
+**The locals:** beavers (stomp them), bighorn rams (they charge; stomp them),
 bald eagles (stomp them, if you can get above one) and porcupines (do NOT stomp).
 
 ## Layout
@@ -99,3 +99,5 @@ The icon is a Blender render of Toots; `tools/make_icon.sh` rebuilds it.
 
 plays the game with canned input, saves a screenshot every half second and
 prints Toots's state, then quits. `--moves=run,jump,fart` picks the inputs.
+`--every=0.1` takes the screenshots more often, which helps when checking an
+animation (add Godot's own `--time-scale 0.3` before `--path` for slow motion).
