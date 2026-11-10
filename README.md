@@ -4,6 +4,8 @@ A 2.5D side-scroller made with Godot 4 and Blender. Toots is a shaggy black
 monster with magnificent teeth who lives in the Rocky Mountains. He runs, he
 jumps, and when a jump isn't enough he farts his way a little higher.
 
+![Toots fart-flying over a meadow, with a marmot ahead and the snowy Rockies behind](docs/screenshot.png)
+
 ## Play
 
     flatpak run org.godotengine.Godot --path .
