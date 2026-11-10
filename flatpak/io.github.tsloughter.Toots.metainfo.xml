@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.tsloughter.Toots</id>
+  <name>Toots: Monster of the Rockies</name>
+  <summary>Run, jump and fart-fly up the Rocky Mountains</summary>
+  <developer id="io.github.tsloughter">
+    <name>Tristan Sloughter</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <!-- No licence has been chosen for the game yet. Replace this with an SPDX
+       identifier (e.g. MIT, GPL-3.0-or-later) once the repository has one. -->
+  <project_license>LicenseRef-proprietary</project_license>
+  <description>
+    <p>
+      Toots is a shaggy black monster with magnificent teeth who lives in the
+      Rocky Mountains. Guide him from the meadow to the snowy summit in a
+      classic side-scrolling platformer.
+    </p>
+    <p>
+      Stomp marmots, dodge charging bighorn rams, steer clear of porcupines,
+      and when a jump isn't quite enough, fart your way a little higher.
+    </p>
+  </description>
+  <url type="homepage">https://github.com/tsloughter/toots</url>
+  <launchable type="desktop-id">io.github.tsloughter.Toots.desktop</launchable>
+  <categories>
+    <category>Game</category>
+    <category>ActionGame</category>
+  </categories>
+  <supports>
+    <control>keyboard</control>
+    <control>gamepad</control>
+  </supports>
+  <releases>
+    <!-- The release workflow rewrites this line with the tag's version and date. -->
+    <release version="0.1.0" date="2026-11-10"/>
+  </releases>
+  <content_rating type="oars-1.1">
+    <content_attribute id="violence-cartoon">mild</content_attribute>
+    <content_attribute id="language-humor">mild</content_attribute>
+  </content_rating>
+</component>

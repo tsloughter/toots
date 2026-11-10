@@ -1,0 +1,115 @@
+# Pushing a tag like v1.0.0 builds the game and publishes a GitHub release with:
+#   toots-v1.0.0-linux-x86_64.tar.gz   standalone executable
+#   toots-v1.0.0-x86_64.flatpak        flatpak bundle
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  export:
+    name: Export Linux build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Godot and the Linux export template
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/godot.zip" \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP/godot"
+          python3 tools/fetch_export_template.py "$GODOT_VERSION" "$HOME/.local/share/godot/export_templates"
+          echo "GODOT=$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Export
+        run: sh tools/export.sh
+
+      - name: Package
+        run: tar -C build -czf "toots-${GITHUB_REF_NAME}-linux-x86_64.tar.gz" toots.x86_64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: toots-*-linux-x86_64.tar.gz
+          if-no-files-found: error
+
+  flatpak:
+    name: Build flatpak bundle
+    needs: export
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-x86_64
+
+      - name: Unpack the exported game
+        run: |
+          mkdir -p build
+          tar -xzf toots-*-linux-x86_64.tar.gz -C build
+
+      - name: Stamp the release version into the app metadata
+        run: |
+          sed -i "s|<release version=\"[^\"]*\" date=\"[^\"]*\"|<release version=\"${GITHUB_REF_NAME#v}\" date=\"$(date -u +%F)\"|" \
+            flatpak/io.github.tsloughter.Toots.metainfo.xml
+
+      - name: Build bundle
+        env:
+          FLATPAK_SCOPE: --system
+        run: |
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          sh tools/build_flatpak.sh
+          mv build/toots.flatpak "toots-${GITHUB_REF_NAME}-x86_64.flatpak"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-x86_64
+          path: toots-*-x86_64.flatpak
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [export, flatpak]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<NOTES
+          ## Install
+
+          **Flatpak** (needs the Flathub remote, for the runtime):
+
+              flatpak install --user toots-${GITHUB_REF_NAME}-x86_64.flatpak
+              flatpak run io.github.tsloughter.Toots
+
+          **Standalone** (Linux x86_64, needs a Vulkan-capable GPU):
+
+              tar -xzf toots-${GITHUB_REF_NAME}-linux-x86_64.tar.gz
+              ./toots.x86_64
+
+          NOTES
+          sed -i 's/^          //' notes.md
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Toots $GITHUB_REF_NAME" \
+            --notes-file notes.md --generate-notes --verify-tag

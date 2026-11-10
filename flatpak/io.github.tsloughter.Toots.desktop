@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Toots: Monster of the Rockies
+GenericName=Platform Game
+Comment=Run, jump and fart-fly up the Rocky Mountains
+Exec=toots
+Icon=io.github.tsloughter.Toots
+Terminal=false
+Categories=Game;ActionGame;
+Keywords=platformer;side-scroller;monster;mountains;
